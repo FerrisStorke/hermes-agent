@@ -125,6 +125,13 @@ class PluginLedgerMixin:
         if callbacks is None:
             return
         self._remove_identity(callbacks, callback)
+        if mapping is getattr(self, "_hooks", None):
+            callback_key = (key, id(callback))
+            getattr(self, "_hook_callback_plugins", {}).pop(callback_key, None)
+            with self._hook_timeout_lock:
+                self._hook_running_callbacks.pop(callback_key, None)
+                self._hook_timeout_suppressed_until.pop(callback_key, None)
+                self._hook_timeout_unhealthy.discard(callback_key)
         if not callbacks:
             mapping.pop(key, None)
 
@@ -266,4 +273,6 @@ class PluginLedgerMixin:
         with self._hook_timeout_lock:
             self._hook_running_callbacks.clear()
             self._hook_timeout_suppressed_until.clear()
+            self._hook_timeout_unhealthy.clear()
+            self._hook_callback_plugins.clear()
         self._discovered = False

@@ -182,6 +182,7 @@ class PluginDispatchMixin:
         use_timeout = _hook_uses_callback_timeout(hook_name, timeout)
         fail_closed = hook_name in _HOOK_TIMEOUT_FAIL_CLOSED_HOOKS
         for cb in self._hooks.get(hook_name, []):
+            callback_name = getattr(cb, "__name__", repr(cb))
             try:
                 if use_timeout:
                     ret = self._run_hook_callback_bounded(hook_name, cb, kwargs, timeout)
@@ -208,12 +209,18 @@ class PluginDispatchMixin:
         callback_key = (hook_name, id(cb))
         token = object()
         with self._hook_timeout_lock:
+            if callback_key in self._hook_timeout_unhealthy:
+                logger.warning(
+                    "Hook '%s' plugin %s callback %s skipped after quarantine",
+                    hook_name, self._hook_callback_plugin_name(hook_name, cb), callback_name)
+                return _HOOK_SKIPPED
             suppressed_until = self._hook_timeout_suppressed_until.get(callback_key)
             running = callback_key in self._hook_running_callbacks
             if (suppressed_until is not None and suppressed_until > time.monotonic()) or running:
                 logger.warning(
-                    "Hook '%s' callback %s skipped after previous "
-                    "timeout or while still running", hook_name, callback_name)
+                    "Hook '%s' plugin %s callback %s skipped after previous "
+                    "timeout or while still running", hook_name,
+                    self._hook_callback_plugin_name(hook_name, cb), callback_name)
                 return _HOOK_SKIPPED
             if suppressed_until is not None:
                 self._hook_timeout_suppressed_until.pop(callback_key, None)
@@ -239,15 +246,22 @@ class PluginDispatchMixin:
         thread.start()
         if not done.wait(timeout=timeout):  # do not join — that would reintroduce the hang
             with self._hook_timeout_lock:
-                # See #6622.
-                self._hook_timeout_suppressed_until[callback_key] = (
-                    time.monotonic() + self._hook_timeout_suppression_seconds)
+                if self._hook_running_callbacks.get(callback_key) is token:
+                    self._hook_running_callbacks.pop(callback_key, None)
+                self._hook_timeout_unhealthy.add(callback_key)
+                self._hook_timeout_suppressed_until.pop(callback_key, None)
             logger.warning(
-                "Hook '%s' callback %s timed out after %gs — skipping", hook_name, callback_name, timeout)
+                "Hook '%s' plugin %s callback %s timed out after %gs — quarantined",
+                hook_name, self._hook_callback_plugin_name(hook_name, cb), callback_name, timeout)
             return _HOOK_SKIPPED
         if "exc" in failure:
             raise failure["exc"]
         return outcome.get("value")
+
+    def _hook_callback_plugin_name(self, hook_name: str, cb: Callable) -> str:
+        """Return the owning plugin name when registration metadata is available."""
+        owner = getattr(self, "_hook_callback_plugins", {}).get((hook_name, id(cb)))
+        return owner or getattr(cb, "__module__", "<unknown>")
 
     def _subscribe_event(self, owner: str, event: str, callback: Callable) -> None:
         """Add an owner-tagged event subscription in registration order."""
