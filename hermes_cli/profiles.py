@@ -129,12 +129,18 @@ _HERMES_SUBCOMMANDS = frozenset({
 def _get_profiles_root() -> Path:
     """Named-profiles root, anchored to the hermes root (NOT the current HERMES_HOME, which
     may itself be a profile) so ``coder profile list`` sees all profiles."""
+    env_root = os.environ.get("HERMES_PROFILES_ROOT", "").strip()
+    if env_root:
+        return Path(env_root)
     return _get_default_hermes_home() / "profiles"
 
 
 def _get_default_hermes_home() -> Path:
     """Default (pre-profile) HERMES_HOME: ``~/.hermes``, or HERMES_HOME itself in
     Docker/custom deployments (e.g. ``/opt/data``)."""
+    env_default = os.environ.get("HERMES_DEFAULT_HOME", "").strip()
+    if env_default:
+        return Path(env_default)
     from hermes_constants import get_default_hermes_root
     return get_default_hermes_root()
 
@@ -230,6 +236,9 @@ def get_profile_dir(name: str) -> Path:
     """Resolve a profile name to its HERMES_HOME directory."""
     canon = normalize_profile_name(name)
     if canon == "default":
+        named_default = _get_profiles_root() / "default"
+        if named_default.is_dir():
+            return named_default
         return _get_default_hermes_home()
     return _get_profiles_root() / canon
 
@@ -711,7 +720,8 @@ def profiles_to_serve(multiplex: bool, profile_allowlist: Optional[List[str]] = 
     active = get_active_profile_name() or "default"
     if not multiplex:
         return [(active, get_profile_dir(active))]
-    serve: List[Tuple[str, Path]] = [("default", _get_default_hermes_home())]
+    default_dir = get_profile_dir("default")
+    serve: List[Tuple[str, Path]] = [("default", default_dir)]
     allowed: Optional[set[str]] = None
     if profile_allowlist is not None:
         allowed = set()

@@ -44,6 +44,9 @@ def get_hermes_home_override() -> str | None:
 
 def _get_platform_default_hermes_home() -> Path:
     """Return the platform-native default Hermes home path."""
+    env_default = os.environ.get("HERMES_DEFAULT_HOME", "").strip()
+    if env_default:
+        return Path(env_default)
     if sys.platform == "win32":
         local_appdata = os.environ.get("LOCALAPPDATA", "").strip()
         base = Path(local_appdata) if local_appdata else Path.home() / "AppData" / "Local"
@@ -146,6 +149,10 @@ _default_hermes_root_memo: "tuple[str, str, Path] | None" = None
 def get_default_hermes_root() -> Path:
     """Root Hermes dir for profile-level ops: ``<root>`` when ``HERMES_HOME=<root>/profiles/<name>``."""
     global _default_hermes_root_memo
+    env_root = os.environ.get("HERMES_ROOT", "").strip() or os.environ.get("HERMES_PROFILES_ROOT", "").strip()
+    if env_root:
+        root_path = Path(env_root)
+        return root_path.parent if root_path.name == "profiles" else root_path
     native_home = _get_platform_default_hermes_home()
     env_home = os.environ.get("HERMES_HOME", "")
     memo = _default_hermes_root_memo
@@ -154,10 +161,13 @@ def get_default_hermes_root() -> Path:
     result = native_home
     if env_home:
         env_path = Path(env_home)
-        try:
-            env_path.resolve().relative_to(native_home.resolve())  # under ~/.hermes (normal or profile mode)
-        except ValueError:  # Docker/custom root: <root>/profiles/<name> -> <root>, else HERMES_HOME itself
-            result = env_path.parent.parent if env_path.parent.name == "profiles" else env_path
+        if env_path.parent.name == "profiles":
+            result = env_path.parent.parent
+        else:
+            try:
+                env_path.resolve().relative_to(native_home.resolve())
+            except ValueError:
+                result = env_path
     _default_hermes_root_memo = (str(native_home), env_home, result)
     return result
 
