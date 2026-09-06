@@ -9,6 +9,10 @@ local OTLP collector evidence files:
 Usage:
   uv run python scripts/verify_providers_otel.py
   uv run python scripts/verify_providers_otel.py --provider opencode-go
+  uv run python scripts/verify_providers_otel.py --provider opencode-zen
+
+Providers verified (default: all):
+  opencode-go, opencode-zen, openrouter, openai-codex (gpt-5.6-luna), deepseek
 """
 
 from __future__ import annotations
@@ -42,8 +46,9 @@ class ProviderCase:
 
 PROVIDER_CASES: tuple[ProviderCase, ...] = (
     ProviderCase("opencode-go", "opencode-go", "deepseek-v4-flash"),
+    ProviderCase("opencode-zen", "opencode-zen", "deepseek-v4-flash"),
     ProviderCase("openrouter", "openrouter", "deepseek/deepseek-v4-flash"),
-    ProviderCase("openai-codex", "openai-codex", "gpt-5.5"),
+    ProviderCase("openai-codex", "openai-codex", "gpt-5.6-luna"),
     ProviderCase(
         "deepseek",
         "deepseek",
