@@ -8,33 +8,13 @@ from dataclasses import dataclass, field
 from typing import Any
 
 try:
-    from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
+    from .serialization import OpenInferenceSpanKindValues, SpanAttributes, mark_span_error
 except ImportError:
-    from enum import Enum
-    class OpenInferenceSpanKindValues(str, Enum):
-        AGENT = "AGENT"
-        LLM = "LLM"
-        TOOL = "TOOL"
-        CHAIN = "CHAIN"
-        RETRIEVER = "RETRIEVER"
-    class SpanAttributes:
-        OPENINFERENCE_SPAN_KIND = "openinference.span.kind"
-        SESSION_ID = "session.id"
-        USER_ID = "user.id"
-        INPUT_VALUE = "input.value"
-        OUTPUT_VALUE = "output.value"
-        LLM_INPUT_MESSAGES = "llm.input_messages"
-        LLM_OUTPUT_MESSAGES = "llm.output_messages"
-        LLM_MODEL_NAME = "llm.model_name"
-        LLM_PROVIDER_NAME = "llm.provider"
-        LLM_PROVIDER = "llm.provider"
-        LLM_COST_TOTAL = "llm.cost.total"
-        LLM_TOKEN_COUNT_PROMPT = "llm.token_count.prompt"
-        LLM_TOKEN_COUNT_COMPLETION = "llm.token_count.completion"
-        LLM_TOKEN_COUNT_TOTAL = "llm.token_count.total"
-        TOOL_NAME = "tool.name"
-        TOOL_PARAMETERS = "tool.parameters"
-        TOOL_OUTPUT = "tool.output"
+    from hermes.plugins.opentelemetry.serialization import (
+        OpenInferenceSpanKindValues,
+        SpanAttributes,
+        mark_span_error,
+    )
 
 from opentelemetry import trace
 from opentelemetry.trace import Span, Tracer
@@ -48,12 +28,6 @@ def _force_flush_traces() -> None:
             force_flush(timeout_millis=5000)
     except Exception:
         pass
-
-
-try:
-    from .serialization import mark_span_error
-except ImportError:
-    from hermes.plugins.opentelemetry.serialization import mark_span_error
 
 
 @dataclass

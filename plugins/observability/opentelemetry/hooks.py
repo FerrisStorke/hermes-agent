@@ -104,11 +104,18 @@ def _error_metadata(error: Any, **kwargs: Any) -> tuple[str, str]:
     if err is None:
         err = kwargs.get("error_message")
     err_type = kwargs.get("error_type")
-    if not err_type and err is not None:
+    if not err_type and isinstance(err, dict):
+        err_type = err.get("type") or err.get("error_type")
+    if not err_type and err is not None and not isinstance(err, dict):
         err_type = type(err).__name__
     if not err_type:
         err_type = "APIError"
-    err_msg = str(err) if err is not None else str(kwargs.get("error_message", "API request failed"))
+    if isinstance(err, dict):
+        err_msg = err.get("message") or err.get("error_message") or str(err)
+    elif err is not None:
+        err_msg = str(err)
+    else:
+        err_msg = str(kwargs.get("error_message", "API request failed"))
     return err_type, err_msg
 
 @_fail_open

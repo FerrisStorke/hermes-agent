@@ -16,11 +16,11 @@ hermes plugins disable observability/langfuse
 
 ## Export
 
-Spans export via OTLP gRPC to the local collector (default `127.0.0.1:4317`).
+Spans export via OTLP to the local collector. The default endpoint is `127.0.0.1:4318` (HTTP); if the HTTP exporter is unavailable, the plugin falls back to gRPC on `127.0.0.1:4317`.
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | `127.0.0.1:4317` | Collector endpoint |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `127.0.0.1:4318` (HTTP), fallback `127.0.0.1:4317` (gRPC) | Collector endpoint |
 | `HERMES_OTEL_ENABLED` | enabled | Set `false` to disable tracing |
 | `HERMES_PROFILE` | — | Attached as `hermes.profile` on turn spans |
 
