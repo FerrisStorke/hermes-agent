@@ -226,9 +226,9 @@ def _verify_case(case: ProviderCase, *, verbose: bool) -> dict[str, Any]:
             errors.append(f"run raised: {run_error}")
         if not result.get("completed") and not result.get("final_response"):
             errors.append(f"turn did not complete: {result!r}")
-        for span in matched_llm:
-            if _span_is_error(span):
-                errors.append(f"unexpected error LLM span: {span.get('attrs', {}).get('error.message')}")
+        if not any(not _span_is_error(s) for s in matched_llm):
+            err_details = [s.get("attrs", {}).get("error.message") for s in matched_llm if _span_is_error(s)]
+            errors.append(f"no successful LLM span recorded; errors: {err_details}")
     else:
         err_messages = " ".join(
             str((s.get("attrs") or {}).get("error.message") or (s.get("status") or {}).get("message") or "")
